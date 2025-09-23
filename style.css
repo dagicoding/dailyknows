@@ -1,0 +1,12 @@
+body {
+  font-family: Arial, sans-serif;
+}
+
+.entry-card {
+  border-radius: 12px;
+  transition: transform 0.18s ease-in-out, box-shadow 0.18s ease-in-out;
+}
+.entry-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+}
