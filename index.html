@@ -1,64 +1,131 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Knows</title>
 
-  <!-- Bootstrap CSS -->
+  <!-- Bootstrap CSS (used for modal/grid plumbing only — visuals overridden) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- Custom CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-light">
+<body>
 
   <!-- Header -->
-  <header class="bg-dark text-white py-3 mb-4 shadow">
-    <div class="container d-flex justify-content-between align-items-center">
-      <h1 class="m-0 text-center flex-grow-1 fw-bold">Daily Knows</h1>
-      <div class="d-flex gap-2">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">Add</button>
-        <button class="btn btn-danger" id="pdfBtn">PDF</button>
+  <header class="dk-header">
+    <div class="dk-header-inner">
+      <div class="dk-brand">
+        <span class="dk-seal">☕</span>
+        <h1 class="dk-title">Daily Knows</h1>
+      </div>
+      <div class="dk-actions">
+        <button class="dk-icon-btn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">
+          <svg id="iconSun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg id="iconMoon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </button>
+        <button class="dk-btn dk-btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          New
+        </button>
+        <button class="dk-btn dk-btn-ghost" id="pdfBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+          Export
+        </button>
       </div>
     </div>
   </header>
 
+  <!-- Stats strip -->
+  <div class="dk-stats-wrap">
+    <div class="dk-stats" id="statsBar">
+      <div class="dk-stat"><span class="dk-stat-num" id="statTotal">0</span><span class="dk-stat-label">entries</span></div>
+      <div class="dk-stat"><span class="dk-stat-num" id="statMonth">0</span><span class="dk-stat-label">this month</span></div>
+      <div class="dk-stat"><span class="dk-stat-num" id="statTags">0</span><span class="dk-stat-label">tags used</span></div>
+    </div>
+  </div>
+
+  <!-- Toolbar: search / filter / sort -->
+  <div class="dk-toolbar-wrap">
+    <div class="dk-toolbar">
+      <div class="dk-search">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="Search your notes…">
+      </div>
+      <select id="filterTag" class="dk-select">
+        <option value="">All tags</option>
+      </select>
+      <select id="filterMonth" class="dk-select">
+        <option value="">All months</option>
+      </select>
+      <select id="sortOrder" class="dk-select">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </div>
+  </div>
+
   <!-- Main Section -->
-  <main class="container">
-    <div id="entries" class="row g-3"></div>
+  <main class="dk-main">
+    <div id="entries" class="dk-entries"></div>
+    <div id="emptyState" class="dk-empty" style="display:none">
+      <div class="dk-empty-seal">☕</div>
+      <h3>No entries yet</h3>
+      <p>Pour a cup and write down what today knows.</p>
+      <button class="dk-btn dk-btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">Write your first entry</button>
+    </div>
+    <div id="noResults" class="dk-empty" style="display:none">
+      <div class="dk-empty-seal">∅</div>
+      <h3>Nothing matches</h3>
+      <p>Try a different search term, tag, or month.</p>
+    </div>
   </main>
 
   <!-- Add Entry Modal -->
   <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
-      <div class="modal-content rounded-4 shadow">
+      <div class="modal-content dk-modal">
         <div class="modal-header">
-          <h5 class="modal-title">Add Entry</h5>
+          <h5 class="modal-title">New entry</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form id="entryForm">
-            <div class="row g-2 mb-3">
-              <div class="col-4">
-                <label class="form-label">Year</label>
-                <select id="ethYear" class="form-select" required></select>
+            <div class="dk-field-row">
+              <div>
+                <label class="dk-label">Year</label>
+                <select id="ethYear" class="dk-select" required></select>
               </div>
-              <div class="col-4">
-                <label class="form-label">Month</label>
-                <select id="ethMonth" class="form-select" required></select>
+              <div>
+                <label class="dk-label">Month</label>
+                <select id="ethMonth" class="dk-select" required></select>
               </div>
-              <div class="col-4">
-                <label class="form-label">Day</label>
-                <select id="ethDay" class="form-select" required></select>
+              <div>
+                <label class="dk-label">Day</label>
+                <select id="ethDay" class="dk-select" required></select>
               </div>
             </div>
-            <div class="mb-3">
-              <label for="text" class="form-label">Note</label>
-              <textarea id="text" class="form-control" placeholder="Write something..." required style="wrap:wrap;"></textarea>
+            <p class="dk-gregorian-preview" id="addGregorianPreview"></p>
+
+            <div class="dk-field">
+              <label for="text" class="dk-label">Note</label>
+              <textarea id="text" class="dk-textarea" rows="3" placeholder="Write something…" required></textarea>
             </div>
+
+            <div class="dk-field">
+              <label class="dk-label">Tag</label>
+              <div class="dk-tag-picker" id="addTagPicker"></div>
+              <input type="hidden" id="entryTag" value="personal">
+            </div>
+
             <div class="d-grid">
-              <button type="submit" class="btn btn-success">Add</button>
+              <button type="submit" class="dk-btn dk-btn-primary dk-btn-block">Save entry</button>
             </div>
           </form>
         </div>
@@ -69,39 +136,68 @@
   <!-- Edit Entry Modal -->
   <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog">
-      <div class="modal-content rounded-4 shadow">
+      <div class="modal-content dk-modal">
         <div class="modal-header">
-          <h5 class="modal-title">Edit Entry</h5>
+          <h5 class="modal-title">Edit entry</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form id="editForm">
-            <div class="row g-2 mb-3">
-              <div class="col-4">
-                <label class="form-label">Year</label>
-                <select id="editYear" class="form-select" required></select>
+            <div class="dk-field-row">
+              <div>
+                <label class="dk-label">Year</label>
+                <select id="editYear" class="dk-select" required></select>
               </div>
-              <div class="col-4">
-                <label class="form-label">Month</label>
-                <select id="editMonth" class="form-select" required></select>
+              <div>
+                <label class="dk-label">Month</label>
+                <select id="editMonth" class="dk-select" required></select>
               </div>
-              <div class="col-4">
-                <label class="form-label">Day</label>
-                <select id="editDay" class="form-select" required></select>
+              <div>
+                <label class="dk-label">Day</label>
+                <select id="editDay" class="dk-select" required></select>
               </div>
             </div>
-            <div class="mb-3">
-              <label for="editText" class="form-label">Note</label>
-              <input type="text" id="editText" class="form-control" required>
+            <p class="dk-gregorian-preview" id="editGregorianPreview"></p>
+
+            <div class="dk-field">
+              <label for="editText" class="dk-label">Note</label>
+              <textarea id="editText" class="dk-textarea" rows="3" required></textarea>
             </div>
+
+            <div class="dk-field">
+              <label class="dk-label">Tag</label>
+              <div class="dk-tag-picker" id="editTagPicker"></div>
+              <input type="hidden" id="editEntryTag" value="personal">
+            </div>
+
             <div class="d-grid">
-              <button type="submit" class="btn btn-primary">Update</button>
+              <button type="submit" class="dk-btn dk-btn-primary dk-btn-block">Update entry</button>
             </div>
           </form>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content dk-modal">
+        <div class="modal-body dk-delete-body">
+          <div class="dk-delete-icon">🗑</div>
+          <h5>Delete this entry?</h5>
+          <p>This can't be undone.</p>
+          <div class="dk-delete-actions">
+            <button type="button" class="dk-btn dk-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="dk-btn dk-btn-danger" id="confirmDeleteBtn">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toastContainer" class="dk-toast-container" aria-live="polite"></div>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -111,43 +207,36 @@
 
   <!-- Firebase SDKs -->
   <script type="module">
-    // Import the functions you need from the SDKs you need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp } 
+    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp }
       from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // Your web app's Firebase configuration for dailyknows-43a88
     const firebaseConfig = {
       apiKey: "AIzaSyDK933ay1nDa1ZA-KeYq3MP46ykPJG-G0o",
       authDomain: "dailyknows-43a88.firebaseapp.com",
       projectId: "dailyknows-43a88",
-      storageBucket: "dailyknows-43a88.appspot.com", // Corrected storageBucket format
+      storageBucket: "dailyknows-43a88.appspot.com",
       messagingSenderId: "435107214237",
       appId: "1:435107214237:web:e8939c15c7793316d33574",
       measurementId: "G-1HVS23R33J"
     };
 
-    // Initialize Firebase
     let app, db;
     try {
       app = initializeApp(firebaseConfig);
-      db = getFirestore(app); // Initialize Firestore
-      console.log("Firebase initialized successfully with new config!");
+      db = getFirestore(app);
+      console.log("Firebase initialized successfully!");
     } catch (err) {
       console.error("Firebase initialization failed:", err);
-      alert("Failed to connect to Firebase. Data will not persist. Check console.");
     }
 
-    // Expose globally for use in script.js
     window.db = db;
     window.firestoreFns = { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp };
+    window.dispatchEvent(new Event("firebase-ready"));
   </script>
 
   <!-- Custom JS -->
   <script type="module" src="script.js"></script>
 
 </body>
-
 </html>
-
-
