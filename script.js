@@ -127,6 +127,8 @@ function initApp() {
   const editMonth = document.getElementById("editMonth");
   const editDay = document.getElementById("editDay");
   const editText = document.getElementById("editText");
+  const editTitle = document.getElementById("editTitle");
+  const entryTitle = document.getElementById("entryTitle");
   const editGregorianPreview = document.getElementById("editGregorianPreview");
 
   const addModalEl = document.getElementById("addModal");
@@ -373,6 +375,7 @@ function initApp() {
       year: parseInt(year, 10) || currentECYear,
       month: parseInt(month, 10) || 1,
       day: parseInt(day, 10) || 1,
+      title: data.title || "",
       note: data.note || "",
       tag: data.tag || "other",
       createdAtMs: data.createdAt && data.createdAt.toMillis ? data.createdAt.toMillis() : 0
@@ -394,7 +397,7 @@ function initApp() {
     let list = Array.from(entriesData.values());
 
     if (q) {
-      list = list.filter(e => e.note.toLowerCase().includes(q));
+      list = list.filter(e => `${e.title} ${e.note}`.toLowerCase().includes(q));
     }
     if (tagFilter) {
       list = list.filter(e => e.tag === tagFilter);
@@ -431,6 +434,7 @@ function initApp() {
           <span class="dk-card-date">${dateStr(entry)}</span>
           <span class="dk-card-greg">${formatGregorian(greg)}</span>
         </div>
+        <h2 class="dk-card-title"></h2>
         <p class="dk-card-text"></p>
         <div class="dk-card-bottom">
           <span class="dk-tag-chip ${tagClass(entry.tag)}">${tagLabel(entry.tag)}</span>
@@ -446,10 +450,16 @@ function initApp() {
       </div>
     `;
     // set note text via textContent to avoid HTML injection from user notes
-    col.querySelector(".dk-card-text").textContent = entry.note;
+    col.querySelector(".dk-card-title").textContent = entry.title || "Untitled entry";
+    col.querySelector(".dk-card-text").textContent = entry.note.length > 220 ? `${entry.note.slice(0, 220).trim()}…` : entry.note;
 
     col.querySelector(".edit-btn").addEventListener("click", () => openEditModal(entry));
-    col.querySelector(".delete-btn").addEventListener("click", () => openDeleteConfirm(entry.id));
+    col.querySelector(".delete-btn").addEventListener("click", (e) => { e.stopPropagation(); openDeleteConfirm(entry.id); });
+    col.querySelector(".edit-btn").addEventListener("click", (e) => e.stopPropagation());
+    col.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      window.location.href = `view.html?id=${encodeURIComponent(entry.id)}`;
+    });
 
     return col;
   }
@@ -497,6 +507,7 @@ function initApp() {
     editMonth.value = entry.month;
     populateDays(editDay, entry.month === 13 ? 6 : 30);
     editDay.value = entry.day;
+    editTitle.value = entry.title || "";
     editText.value = entry.note;
     buildTagPicker(editTagPicker, editEntryTagInput, entry.tag);
     updateGregorianPreview(editYear, editMonth, editDay, editGregorianPreview);
@@ -540,11 +551,12 @@ function initApp() {
     const year = parseInt(ethYear.value, 10);
     const month = parseInt(ethMonth.value, 10);
     const day = parseInt(ethDay.value, 10);
+    const title = (entryTitle?.value || "").trim();
     const note = (document.getElementById("text")?.value || "").trim();
     const tag = entryTagInput.value || "other";
 
-    if (!year || !month || !day || !note) {
-      showToast("Please fill in the date and a note.", "error");
+    if (!year || !month || !day || !title || !note) {
+      showToast("Please fill in the date, title, and note.", "error");
       return;
     }
 
@@ -553,13 +565,13 @@ function initApp() {
 
     if (!entriesCollectionRef) {
       const tempId = `local-${Date.now()}`;
-      entriesData.set(tempId, { id: tempId, year, month, day, note, tag, createdAtMs: Date.now() });
+      entriesData.set(tempId, { id: tempId, year, month, day, title, note, tag, highlights: [], createdAtMs: Date.now() });
       renderAll();
       showToast("Entry saved locally (no cloud connection).", "success");
     } else {
       try {
         await addDoc(entriesCollectionRef, {
-          year, month, day, note, tag,
+          year, month, day, title, note, tag, highlights: [],
           date: dateLegacy,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -587,6 +599,7 @@ function initApp() {
     const year = parseInt(editYear.value, 10);
     const month = parseInt(editMonth.value, 10);
     const day = parseInt(editDay.value, 10);
+    const title = editTitle.value.trim();
     const note = editText.value.trim();
     const tag = editEntryTagInput.value || "other";
     const id = currentEditingId;
@@ -594,15 +607,20 @@ function initApp() {
     const { updateDoc, doc, serverTimestamp } = getFns();
     const dateLegacy = `${day} ${ethiopianMonths[month - 1]} ${year} EC`;
 
+    if (!title || !note) {
+      showToast("Please enter a title and note.", "error");
+      return;
+    }
+
     if (!entriesCollectionRef) {
       const existing = entriesData.get(id) || {};
-      entriesData.set(id, { ...existing, year, month, day, note, tag });
+      entriesData.set(id, { ...existing, year, month, day, title, note, tag, highlights: [] });
       renderAll();
       showToast("Entry updated locally.", "success");
     } else {
       try {
         await updateDoc(doc(db, "entries", id), {
-          year, month, day, note, tag,
+          year, month, day, title, note, tag, highlights: [],
           date: dateLegacy,
           updatedAt: serverTimestamp()
         });
@@ -617,6 +635,19 @@ function initApp() {
     if (modal) modal.hide();
     currentEditingId = null;
   });
+
+  const editQueryId = new URLSearchParams(window.location.search).get("edit");
+  if (editQueryId) {
+    const waitForEditEntry = setInterval(() => {
+      const entry = entriesData.get(editQueryId);
+      if (entry) {
+        clearInterval(waitForEditEntry);
+        openEditModal(entry);
+        history.replaceState({}, "", "index.html");
+      }
+    }, 100);
+    setTimeout(() => clearInterval(waitForEditEntry), 10000);
+  }
 
   // ---- PDF export (respects current search/filter/sort) ----
   if (pdfBtn) {
